@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"reflect"
 	"testing"
 	"testing/quick"
@@ -200,6 +201,30 @@ func TestFirstPlayerWinProb(t *testing.T) {
 		got := firstPlayerWinProb(c.s0, c.s1)
 		if math.Abs(got-c.want) > 0.00001 {
 			t.Errorf("firstPlayerWinProb(%v, %v)=%v; want %v", c.s0, c.s1, got, c.want)
+		}
+	}
+}
+
+func strongestPlayerWins(s0, s1 float64) float64 {
+	if s0 >= s1 {
+		return 1
+	}
+	return 0
+}
+
+func TestTourneyOk(t *testing.T) {
+	cases := [][]float64{
+		{0, 1},
+		{0, .5, 1, 1.5},
+		{-1, -0.75, -0.5, -0.25, 0, .5, 1, 1.5},
+		{-0.178, -0.259, -0.33, -1.076, 0.033, -1.707, 0.466, 1.107, 0.579, -0.825, -0.255, 0.086, 0.309, 0.512, 1.713, -0.777},
+		{0.718, -1.027, -0.172, -0.914, -0.077, 1.992, 0.742, -0.242, 0.291, -0.564, 1.089, 0.715, -1.331, -1.085, -1.071, -0.286},
+		{0.16, 0.5, 1, 0, -0.4, 1.4, -0.7, -0.6, -0.15, 1.3, 0.8, -1.5},
+	}
+	for _, d := range cases {
+		r := rand.New(rand.NewSource(0))
+		if !tourneyOk(r, d, 100, strongestPlayerWins) {
+			t.Fatalf("tourneyOk(%v) failed", d)
 		}
 	}
 }

@@ -13,9 +13,14 @@ func main() {
 	nWin := 0
 	nPlayer := 16
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	nRound := 100
+	nRound := 1000
 	for i := 0; i < nSim; i++ {
-		if tourneyOk(r, nPlayer, nRound) {
+		strength := make([]float64, nPlayer)
+		for i := 0; i < nPlayer; i++ {
+			strength[i] = math.RoundToEven(r.NormFloat64()*1000) / 1000.0
+		}
+		fmt.Printf("%v\n", strength)
+		if tourneyOk(r, strength, nRound, firstPlayerWinProb) {
 			nWin++
 		}
 	}
@@ -23,12 +28,8 @@ func main() {
 		nWin, nSim, float64(nWin)/float64(nSim))
 }
 
-func tourneyOk(r *rand.Rand, nPlayer, nRound int) bool {
-	strength := make([]float64, nPlayer)
-	for i := 0; i < nPlayer; i++ {
-		strength[i] = math.RoundToEven(r.NormFloat64()*1000) / 1000.0
-	}
-	score := make([]int, nPlayer) // Each player's score.
+func tourneyOk(r *rand.Rand, strength []float64, nRound int, fpwb func(s0, s1 float64) float64) bool {
+	score := make([]int, len(strength)) // Each player's score.
 	seed := getSeed(strength)
 	for i := 0; i < nRound; i++ {
 		opp := pairings(score, seed)
