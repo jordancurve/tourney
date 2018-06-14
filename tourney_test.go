@@ -96,6 +96,7 @@ func TestPairings(t *testing.T) {
 		{[]int{1, 1}, []int{0, 1}, []int{0, 1}},
 		{[]int{2, 2, 1, 1}, []int{0, 1, 2, 3}, []int{0, 1, 2, 3}},
 		{[]int{3, 2, 1, 1}, []int{0, 1, 2, 3}, []int{0, 1, 2, 3}},
+		{[]int{1, 1, 1, 1, 0, 0, 0, 0}, []int{0, 1, 2, 3, 4, 5, 6, 7}, []int{0, 3, 1, 2, 4, 7, 5, 6}},
 	}
 	for _, c := range cases {
 		got := pairings(c.score, c.seed)
@@ -205,11 +206,8 @@ func TestFirstPlayerWinProb(t *testing.T) {
 	}
 }
 
-func strongestPlayerWins(s0, s1 float64) float64 {
-	if s0 >= s1 {
-		return 1
-	}
-	return 0
+func r() *rand.Rand {
+	return rand.New(rand.NewSource(0))
 }
 
 func TestTourneyOk(t *testing.T) {
@@ -217,14 +215,15 @@ func TestTourneyOk(t *testing.T) {
 		{0, 1},
 		{0, .5, 1, 1.5},
 		{-1, -0.75, -0.5, -0.25, 0, .5, 1, 1.5},
-		{-0.178, -0.259, -0.33, -1.076, 0.033, -1.707, 0.466, 1.107, 0.579, -0.825, -0.255, 0.086, 0.309, 0.512, 1.713, -0.777},
-		{0.718, -1.027, -0.172, -0.914, -0.077, 1.992, 0.742, -0.242, 0.291, -0.564, 1.089, 0.715, -1.331, -1.085, -1.071, -0.286},
-		{0.16, 0.5, 1, 0, -0.4, 1.4, -0.7, -0.6, -0.15, 1.3, 0.8, -1.5},
+		{9, 7, 5, 3, 8, 6, 1, 0, 2, 4},
+		{5, 1, 8, 11, 10, 2, 4, 6, 7, 9, 12, 3},
+		{8, 5, 14, 13, 11, 3, 15, 7, 6, 10, 9, 1, 0, 2, 12, 4},
+		{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
 	}
-	for _, d := range cases {
-		r := rand.New(rand.NewSource(0))
-		if !tourneyOk(r, d, 100, strongestPlayerWins) {
-			t.Fatalf("tourneyOk(%v) failed", d)
+	nRounds := 1000
+	for _, c := range cases {
+		if !tourneyOk(r(), c, nRounds, strongestPlayerWins) {
+			t.Errorf("tourneyOk(%v, %d, strongestPlayerWins) failed", c, nRounds)
 		}
 	}
 }
