@@ -243,9 +243,9 @@ func TestTourneyOk(t *testing.T) {
 			p[i].strength = s
 		}
 		ty := Tourney{
-			nRound:             1000,
-			firstPlayerWinProb: strongestPlayerWins,
-			players:            Players(p),
+			NRound:             1000,
+			FirstPlayerWinProb: strongestPlayerWins,
+			Players:            Players(p),
 		}
 		if !ty.ok(r()) {
 			t.Errorf("(%#v).ok() failed", ty)

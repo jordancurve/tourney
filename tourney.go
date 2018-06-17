@@ -19,10 +19,10 @@ type Player struct {
 type Players []Player
 
 type Tourney struct {
-	nRound             int // number of rounds
-	curRound           int // current round (0-based)
-	firstPlayerWinProb func(s0, s1 float64) float64
-	players            Players
+	NRound             int // number of rounds
+	CurRound           int // current round (0-based)
+	FirstPlayerWinProb func(s0, s1 float64) float64
+	Players            Players
 }
 
 const debug = false // Whether to show debug messages.
@@ -33,13 +33,13 @@ func main() {
 	nPlayer := 16
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	t := &Tourney{
-		nRound:             40,
-		firstPlayerWinProb: firstPlayerWinProb,
+		NRound:             40,
+		FirstPlayerWinProb: firstPlayerWinProb,
 	}
 	for i := 0; i < nSim; i++ {
-		t.players = make([]Player, nPlayer)
+		t.Players = make([]Player, nPlayer)
 		for i := 0; i < nPlayer; i++ {
-			t.players[i].strength = math.RoundToEven(r.NormFloat64()*1000) / 1000.0
+			t.Players[i].strength = math.RoundToEven(r.NormFloat64()*1000) / 1000.0
 		}
 		if t.ok(r) {
 			nWin++
@@ -51,26 +51,26 @@ func main() {
 
 func (t *Tourney) ok(r *rand.Rand) bool {
 	strength := []float64{}
-	for _, p := range t.players {
+	for _, p := range t.Players {
 		strength = append(strength, p.strength)
 	}
 	for i, s := range getSeed(strength) {
-		t.players[i].seed = s
+		t.Players[i].seed = s
 	}
 	var dist []int
-	for i := 0; i < t.nRound; i++ {
+	for i := 0; i < t.NRound; i++ {
 		if debug {
-			t.players.showScores()
+			t.Players.showScores()
 		}
-		matchups := t.players.pairings()
+		matchups := t.Players.pairings()
 		if debug {
 			showMatchups(strength, matchups)
 		}
 		t.playRound(r, matchups)
-		dist = t.players.getDistances()
+		dist = t.Players.getDistances()
 	}
 	if debug {
-		t.players.showScores()
+		t.Players.showScores()
 		fmt.Printf("dist=%v\n", dist)
 	}
 	for _, v := range dist {
@@ -147,10 +147,10 @@ func firstPlayerWins(r *rand.Rand, s0, s1 float64, fpwb func(s0, s1 float64) flo
 func (t *Tourney) playRound(r *rand.Rand, matchups []int) {
 	for i := 0; i < len(matchups); i += 2 {
 		// 1 point for a win, 0 points for a loss.
-		if firstPlayerWins(r, t.players[matchups[i]].strength, t.players[matchups[i+1]].strength, t.firstPlayerWinProb) {
-			t.players[matchups[i]].score++
+		if firstPlayerWins(r, t.Players[matchups[i]].strength, t.Players[matchups[i+1]].strength, t.FirstPlayerWinProb) {
+			t.Players[matchups[i]].score++
 		} else {
-			t.players[matchups[i+1]].score++
+			t.Players[matchups[i+1]].score++
 		}
 	}
 }
