@@ -74,8 +74,11 @@ func TestFindOpponentsForGroup(t *testing.T) {
 		want       []int
 	}{
 		{[]bool{false, false}, 0, 2, []int{0, 1}},
-		{[]bool{false, false, false, false}, 0, 4, []int{0, 3, 1, 2}},
-		{[]bool{false, true, false, false, false}, 1, 5, []int{2, 3, 4, 0}},
+		//SSBM:
+		//{[]bool{false, false, false, false}, 0, 4, []int{0, 3, 1, 2}},
+		//{[]bool{false, true, false, false, false}, 1, 5, []int{2, 3, 4, 0}},
+		{[]bool{false, false, false, false}, 0, 4, []int{0, 2, 1, 3}},
+		{[]bool{false, true, false, false, false}, 1, 5, []int{2, 4, 3, 0}},
 	}
 	for _, c := range cases {
 		got := findOpponentsForGroup(c.selected, c.start, c.end)
@@ -92,11 +95,14 @@ func TestPairings(t *testing.T) {
 		want  []int
 	}{
 		{[]int{1, 0}, []int{0, 0}, []int{0, 1}},
-		{[]int{1, 1, 1, 1}, []int{0, 1, 2, 3}, []int{0, 3, 1, 2}},
 		{[]int{1, 1}, []int{0, 1}, []int{0, 1}},
 		{[]int{2, 2, 1, 1}, []int{0, 1, 2, 3}, []int{0, 1, 2, 3}},
 		{[]int{3, 2, 1, 1}, []int{0, 1, 2, 3}, []int{0, 1, 2, 3}},
-		{[]int{1, 1, 1, 1, 0, 0, 0, 0}, []int{0, 1, 2, 3, 4, 5, 6, 7}, []int{0, 3, 1, 2, 4, 7, 5, 6}},
+		// SSBM-style
+		// {[]int{1, 1, 1, 1}, []int{0, 1, 2, 3}, []int{0, 3, 1, 2}},
+		// {[]int{1, 1, 1, 1, 0, 0, 0, 0}, []int{0, 1, 2, 3, 4, 5, 6, 7}, []int{0, 3, 1, 2, 4, 7, 5, 6}},
+		{[]int{1, 1, 1, 1}, []int{0, 1, 2, 3}, []int{0, 2, 1, 3}},
+		{[]int{1, 1, 1, 1, 0, 0, 0, 0}, []int{0, 1, 2, 3, 4, 5, 6, 7}, []int{0, 2, 1, 3, 4, 6, 5, 7}},
 	}
 	for _, c := range cases {
 		got := pairings(c.score, c.seed)

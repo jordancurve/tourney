@@ -12,17 +12,17 @@ import (
 const debug = false // Whether to show debug messages.
 
 func main() {
-	nSim := int(1)
+	nSim := 100
 	nWin := 0
-	nPlayer := 16
+	nPlayer := 32
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	nRound := 100000
+	nRound := 40
 	for i := 0; i < nSim; i++ {
 		strength := make([]float64, nPlayer)
 		for i := 0; i < nPlayer; i++ {
 			strength[i] = math.RoundToEven(r.NormFloat64()*1000) / 1000.0
 		}
-		fmt.Printf("%v\n", strength)
+		//fmt.Printf("%v\n", strength)
 		//if tourneyOk(r, strength, nRound, firstPlayerWinProb) {
 		if tourneyOk(r, strength, nRound, strongestPlayerWins) {
 			nWin++
@@ -146,7 +146,7 @@ Definition: Player P's "first choice opponent" is the Nth player (0-based) in P'
 2. For each player P in the list, starting at the top of the list, their opponent O is the player nearest (with ties broken down) to their first choice opponent for whom all of the following are true:
 
 - O hasn't yet been selected this round
-- P has not yet played against O in the tournament
+- P has previously played O at most floor(2*numPreviousRounds/numPlayers) times. [not implemented yet]
 */
 func pairings(score []int, seed []int) []int {
 	players := []int{}
@@ -187,7 +187,16 @@ func findOpponentsForGroup(selected []bool, start, end int) []int {
 			continue
 		}
 		selected[i] = true
-		o, err := findNearestUnselected(selected, end-(i-start)-1)
+		// SSBM-style
+		// firstChoiceOpponent := end-(i-start)-1)
+		n := end - start // group size
+
+		// Non-SSBM.
+		// in grp of 4, 0 plays 2; 1 plays 3; 2 plays 0, 3 plays 1.
+		p := i - start
+		firstChoiceOpponent := (p+n/2)%n + start
+		//fmt.Printf("start=%d end=%d n=%d i=%d fco=%d\n", start, end, n, i, firstChoiceOpponent)
+		o, err := findNearestUnselected(selected, firstChoiceOpponent)
 		if err != nil {
 			panic(err)
 		}
