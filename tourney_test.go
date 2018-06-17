@@ -105,7 +105,12 @@ func TestPairings(t *testing.T) {
 		{[]int{1, 1, 1, 1, 0, 0, 0, 0}, []int{0, 1, 2, 3, 4, 5, 6, 7}, []int{0, 2, 1, 3, 4, 6, 5, 7}},
 	}
 	for _, c := range cases {
-		got := pairings(c.score, c.seed)
+		p := make([]Player, len(c.score))
+		for i := 0; i < len(p); i++ {
+			p[i].score = c.score[i]
+			p[i].seed = c.seed[i]
+		}
+		got := Players(p).pairings()
 		if !reflect.DeepEqual(got, c.want) {
 			t.Errorf("pairings(%v, %v)=%v; want %v", c.score, c.seed, got, c.want)
 		}
@@ -149,20 +154,26 @@ func TestAbs(t *testing.T) {
 
 func TestGetDistances(t *testing.T) {
 	cases := []struct {
-		x, y []float64
-		want []int
+		score    []int
+		strength []float64
+		want     []int
 	}{
-		{[]float64{}, []float64{}, []int{}},
-		{[]float64{0}, []float64{0}, []int{0}},
-		{[]float64{0, 1}, []float64{0, 1}, []int{0, 0}},
-		{[]float64{1, 0}, []float64{1, 0}, []int{0, 0}},
-		{[]float64{0, 1}, []float64{1, 0}, []int{1, 1}},
-		{[]float64{0, 1, 2}, []float64{2, 1, 0}, []int{2, 0, 2}},
+		{[]int{}, []float64{}, []int{}},
+		{[]int{0}, []float64{0}, []int{0}},
+		{[]int{0, 1}, []float64{0, 1}, []int{0, 0}},
+		{[]int{1, 0}, []float64{1, 0}, []int{0, 0}},
+		{[]int{0, 1}, []float64{1, 0}, []int{1, 1}},
+		{[]int{0, 1, 2}, []float64{2, 1, 0}, []int{2, 0, 2}},
 	}
 	for _, c := range cases {
-		got := getDistances(c.x, c.y)
+		p := make([]Player, len(c.score))
+		for i := 0; i < len(p); i++ {
+			p[i].score = c.score[i]
+			p[i].strength = c.strength[i]
+		}
+		got := Players(p).getDistances()
 		if !reflect.DeepEqual(got, c.want) {
-			t.Errorf("getDistances(%v, %v)=%v; want %v", c.x, c.y, got, c.want)
+			t.Errorf("getDistances(%v, %v)=%v; want %v", c.score, c.strength, got, c.want)
 		}
 	}
 }
@@ -226,10 +237,18 @@ func TestTourneyOk(t *testing.T) {
 		{8, 5, 14, 13, 11, 3, 15, 7, 6, 10, 9, 1, 0, 2, 12, 4},
 		{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15},
 	}
-	nRounds := 1000
 	for _, c := range cases {
-		if !tourneyOk(r(), c, nRounds, strongestPlayerWins) {
-			t.Errorf("tourneyOk(%v, %d, strongestPlayerWins) failed", c, nRounds)
+		p := make([]Player, len(c))
+		for i, s := range c {
+			p[i].strength = s
+		}
+		ty := Tourney{
+			nRound:             1000,
+			firstPlayerWinProb: strongestPlayerWins,
+			players:            Players(p),
+		}
+		if !ty.ok(r()) {
+			t.Errorf("(%#v).ok() failed", ty)
 		}
 	}
 }
