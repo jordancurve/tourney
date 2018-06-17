@@ -19,61 +19,64 @@ type Player struct {
 type Players []Player
 
 type Tourney struct {
+	Rand               *rand.Rand
 	NRound             int // number of rounds
 	CurRound           int // current round (0-based)
 	FirstPlayerWinProb func(s0, s1 float64) float64
 	Players            Players
+	Matchups           []int
 }
 
 const debug = false // Whether to show debug messages.
 
 func main() {
-	nSim := 100
-	nWin := 0
+	nSim := 100 // Number of simulations to run.
+	nOk := 0    // Number of tournaments that ordered players acceptably.
 	nPlayer := 16
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	t := &Tourney{
 		NRound:             40,
 		FirstPlayerWinProb: firstPlayerWinProb,
+		Rand:               rand.New(rand.NewSource(time.Now().UnixNano())),
 	}
 	for i := 0; i < nSim; i++ {
-		t.Players = make([]Player, nPlayer)
-		for i := 0; i < nPlayer; i++ {
-			t.Players[i].strength = math.RoundToEven(r.NormFloat64()*1000) / 1000.0
-		}
-		if t.ok(r) {
-			nWin++
+		t.initPlayersWithRandomStrength(nPlayer)
+		if t.ok() {
+			nOk++
 		}
 	}
 	fmt.Printf("win probability = %d/%d (%g)\n",
-		nWin, nSim, float64(nWin)/float64(nSim))
+		nOk, nSim, float64(nOk)/float64(nSim))
 }
 
-func (t *Tourney) ok(r *rand.Rand) bool {
-	strength := []float64{}
-	for _, p := range t.Players {
-		strength = append(strength, p.strength)
+func (t *Tourney) initPlayersWithRandomStrength(nPlayer int) {
+	t.Players = make([]Player, nPlayer)
+	for i := 0; i < nPlayer; i++ {
+		t.Players[i].strength = math.RoundToEven(t.Rand.NormFloat64()*1000) / 1000.0
 	}
+}
+
+func (t *Tourney) ok() bool {
+	ps := t.Players
+	strength := ps.strengths()
 	for i, s := range getSeed(strength) {
-		t.Players[i].seed = s
+		ps[i].seed = s
 	}
-	var dist []int
 	for i := 0; i < t.NRound; i++ {
 		if debug {
-			t.Players.showScores()
+			ps.showScores()
 		}
-		matchups := t.Players.pairings()
+		t.Matchups = ps.pairings()
 		if debug {
-			showMatchups(strength, matchups)
+			ps.showMatchups()
 		}
-		t.playRound(r, matchups)
-		dist = t.Players.getDistances()
+		t.playRound()
 	}
+	distance := ps.getDistances()
 	if debug {
-		t.Players.showScores()
-		fmt.Printf("dist=%v\n", dist)
+		ps.showScores()
+		fmt.Printf("distance=%v\n", distance)
 	}
-	for _, v := range dist {
+	for _, v := range distance {
 		if v > 4 {
 			return false
 		}
@@ -81,10 +84,26 @@ func (t *Tourney) ok(r *rand.Rand) bool {
 	return true
 }
 
-func (p Players) showScores() {
+func (ps Players) sortByMatchups(matchups []int) {
+	nps := make([]Player, len(ps))
+	copy(nps, ps)
+	for i, v := range matchups {
+		ps[i] = nps[v]
+	}
+}
+
+func (ps Players) strengths() []float64 {
+	s := []float64{}
+	for _, p := range ps {
+		s = append(s, p.strength)
+	}
+	return s
+}
+
+func (ps Players) showScores() {
 	scores := []string{}
-	for i := 0; i < len(p); i++ {
-		scores = append(scores, fmt.Sprintf("%2d:%d ", int(p[i].strength), int(p[i].score)))
+	for i := 0; i < len(ps); i++ {
+		scores = append(scores, fmt.Sprintf("%2s:%d ", ps[i], int(ps[i].score)))
 	}
 	sort.Strings(scores)
 	for i := 0; i < len(scores)/2; i++ {
@@ -96,12 +115,16 @@ func (p Players) showScores() {
 	fmt.Printf("score=%s\n", s)
 }
 
-func showMatchups(strength []float64, matchups []int) {
+func (ps Players) showMatchups() {
 	fmt.Printf("matchups  =")
-	for i := 0; i < len(matchups); i += 2 {
-		fmt.Printf("%dv%d ", int(strength[matchups[i]]), int(strength[matchups[i+1]]))
+	for i := 0; i < len(ps); i += 2 {
+		fmt.Printf("%sv%s ", ps[i], ps[i+1])
 	}
 	fmt.Printf("\n")
+}
+
+func (p Player) String() string {
+	return fmt.Sprintf("%d", int(p.strength))
 }
 
 // Precondition: elements of x are exactly representable as floats.
@@ -136,21 +159,16 @@ func clamp(a, lo, hi float64) float64 {
 	return a
 }
 
-// Given strength of player 0 and player 1, return true iff the
-// first player wins
-func firstPlayerWins(r *rand.Rand, s0, s1 float64, fpwb func(s0, s1 float64) float64) bool {
-	return r.Float64() <= fpwb(s0, s1)
-}
-
 // playRound plays all the games in each round according to the opponent
 // table.
-func (t *Tourney) playRound(r *rand.Rand, matchups []int) {
-	for i := 0; i < len(matchups); i += 2 {
-		// 1 point for a win, 0 points for a loss.
-		if firstPlayerWins(r, t.Players[matchups[i]].strength, t.Players[matchups[i+1]].strength, t.FirstPlayerWinProb) {
-			t.Players[matchups[i]].score++
+func (t *Tourney) playRound() {
+	ms := t.Matchups
+	ps := t.Players
+	for i := 0; i < len(ms); i += 2 {
+		if t.Rand.Float64() <= t.FirstPlayerWinProb(ps[ms[i]].strength, ps[ms[i+1]].strength) {
+			ps[ms[i]].score++
 		} else {
-			t.Players[matchups[i+1]].score++
+			ps[ms[i+1]].score++
 		}
 	}
 }
@@ -170,36 +188,32 @@ Definition: Player P's "first choice opponent" is the Nth player (0-based) in P'
 - O hasn't yet been selected this round
 - P has previously played O at most floor(2*numPreviousRounds/numPlayers) times. [not implemented yet]
 */
-func (p Players) pairings() []int {
-	players := []int{}
-	for i := 0; i < len(p); i++ {
-		players = append(players, i)
+func (ps Players) pairings() []int {
+	pis := []int{} // Player-indexes: list of indexes into ps.
+	for i := 0; i < len(ps); i++ {
+		pis = append(pis, i)
 	}
-	sort.Slice(players, func(a, b int) bool {
-		a, b = players[a], players[b]
-		if p[a].score > p[b].score {
-			return true
-		} else if p[a].score < p[b].score {
-			return false
-		}
-		return p[a].seed < p[b].seed
-	})
+	sort.Slice(pis, func(a, b int) bool { return orderByScoreAndSeed(ps[pis[a]], ps[pis[b]]) })
 	start := 0 // first in group
-	group := p[players[0]].score
-	selected := make([]bool, len(players))
+	group := ps[pis[0]].score
+	selected := make([]bool, len(pis))
 	pairings := []int{}
-	for i := 0; i < len(players); i++ {
-		if p[players[i]].score != group {
+	for i := 0; i < len(pis); i++ {
+		if ps[pis[i]].score != group {
 			pairings = append(pairings, findOpponentsForGroup(selected, start, i)...)
-			group = p[players[i]].score
+			group = ps[pis[i]].score
 			start = i
 		}
 	}
-	pairings = append(pairings, findOpponentsForGroup(selected, start, len(players))...)
+	pairings = append(pairings, findOpponentsForGroup(selected, start, len(pis))...)
 	for i := 0; i < len(pairings); i++ {
-		pairings[i] = players[pairings[i]]
+		pairings[i] = pis[pairings[i]]
 	}
 	return pairings
+}
+
+func orderByScoreAndSeed(a, b Player) bool {
+	return a.score > b.score || (a.score == b.score && a.seed < b.seed)
 }
 
 func findOpponentsForGroup(selected []bool, start, end int) []int {
@@ -271,16 +285,16 @@ Make an array a numbered from 0 to N. Make one copy of the array sorted by x and
 Let i be an integer in [0,N). Let pos(i, x) be the position of i in x. Let pos(i, y) be the position
 of i in y. Let dist[i] = abs(pos(i, x) - pos(i, y)).
 */
-func (p Players) getDistances() []int {
-	N := len(p)
+func (ps Players) getDistances() []int {
+	N := len(ps)
 	a := make([]int, N)
 	b := make([]int, N)
 	for i := 0; i < N; i++ {
 		a[i] = i
 		b[i] = i
 	}
-	sort.Slice(a, func(f, g int) bool { return p[a[f]].score > p[a[g]].score })
-	sort.Slice(b, func(f, g int) bool { return p[b[f]].strength > p[b[g]].strength })
+	sort.Slice(a, func(f, g int) bool { return ps[a[f]].score > ps[a[g]].score })
+	sort.Slice(b, func(f, g int) bool { return ps[b[f]].strength > ps[b[g]].strength })
 	apos := getPosArray(a)
 	bpos := getPosArray(b)
 	if debug {

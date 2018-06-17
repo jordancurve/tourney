@@ -246,8 +246,9 @@ func TestTourneyOk(t *testing.T) {
 			NRound:             1000,
 			FirstPlayerWinProb: strongestPlayerWins,
 			Players:            Players(p),
+			Rand:               r(),
 		}
-		if !ty.ok(r()) {
+		if !ty.ok() {
 			t.Errorf("(%#v).ok() failed", ty)
 		}
 	}
