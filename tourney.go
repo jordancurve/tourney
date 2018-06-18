@@ -11,9 +11,10 @@ import (
 
 // A player in the tournament.
 type Player struct {
-	strength float64
-	score    int // number of wins in the tournament so far
-	seed     int // 0 is best seed
+	strength      float64
+	score         int // number of wins in the tournament so far
+	seed          int // 0 is best seed
+	gamesVsPlayer []int
 }
 
 type Players []Player
@@ -49,9 +50,18 @@ func main() {
 }
 
 func (t *Tourney) initPlayersWithRandomStrength(nPlayer int) {
-	t.Players = make([]Player, nPlayer)
+	t.Players = []Player{}
 	for i := 0; i < nPlayer; i++ {
-		t.Players[i].strength = math.RoundToEven(t.Rand.NormFloat64()*1000) / 1000.0
+		t.Players = append(t.Players, Player{
+			strength: math.RoundToEven(t.Rand.NormFloat64()*1000) / 1000.0,
+		})
+	}
+	t.Players.initGamesVsPlayer()
+}
+
+func (ps Players) initGamesVsPlayer() {
+	for i := range ps {
+		ps[i].gamesVsPlayer = make([]int, len(ps))
 	}
 }
 
@@ -149,11 +159,11 @@ func firstPlayerWinProb(s0, s1 float64) float64 {
 	return clamp(0.5+(s0-s1)*0.4/1.28, 0, 1)
 }
 
-func clamp(a, lo, hi float64) float64 {
-	if a < lo {
+func clamp(x, lo, hi float64) float64 {
+	if x < lo {
 		return lo
 	}
-	if a > hi {
+	if x > hi {
 		return hi
 	}
 	return a
@@ -162,14 +172,20 @@ func clamp(a, lo, hi float64) float64 {
 // playRound plays all the games in each round according to the opponent
 // table.
 func (t *Tourney) playRound() {
-	ms := t.Matchups
+	for i := 0; i < len(t.Matchups); i += 2 {
+		t.playMatch(t.Matchups[i], t.Matchups[i+1])
+	}
+}
+
+// playMatch plays a single game between players i & j.
+func (t *Tourney) playMatch(i, j int) {
 	ps := t.Players
-	for i := 0; i < len(ms); i += 2 {
-		if t.Rand.Float64() <= t.FirstPlayerWinProb(ps[ms[i]].strength, ps[ms[i+1]].strength) {
-			ps[ms[i]].score++
-		} else {
-			ps[ms[i+1]].score++
-		}
+	ps[i].gamesVsPlayer[j]++
+	ps[j].gamesVsPlayer[i]++
+	if t.Rand.Float64() <= t.FirstPlayerWinProb(ps[i].strength, ps[j].strength) {
+		ps[i].score++
+	} else {
+		ps[j].score++
 	}
 }
 
@@ -187,6 +203,8 @@ Definition: Player P's "first choice opponent" is the Nth player (0-based) in P'
 
 - O hasn't yet been selected this round
 - P has previously played O at most floor(2*numPreviousRounds/numPlayers) times. [not implemented yet]
+
+Picture an edge weighted complete graph in which nodes are players and each edge is labeled with the number of games played between those two players. To be valid, the graph must not allow any two edges coming out from a node to differ by more than 1. That is, if L is the least of the labels of every edge coming out of N and G is the greatest, then we must have G - L ≤ 1 at all times.
 */
 func (ps Players) pairings() []int {
 	pis := []int{} // Player-indexes: list of indexes into ps.

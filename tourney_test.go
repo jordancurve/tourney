@@ -248,6 +248,7 @@ func TestTourneyOk(t *testing.T) {
 			Players:            Players(p),
 			Rand:               r(),
 		}
+		ty.Players.initGamesVsPlayer()
 		if !ty.ok() {
 			t.Errorf("(%#v).ok() failed", ty)
 		}
